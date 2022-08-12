@@ -1,42 +1,32 @@
+use std::ffi;
+
 mod bindings;
 
 fn main() {
-    println!("Hello, world!");
     unsafe{
         let conn = bindings::pbs_connect(0 as *mut i8);
-        println!("{}", conn);
+        // second arg is null to get all nodes, third is null to get all attributes, forth is unused
+        let mut status = bindings::pbs_stathost(conn, 0 as *mut i8, 0 as *mut bindings::attrl, 0 as *mut i8);
+        while status != 0 as *mut bindings::batch_status {
+            println!("{}", ffi::CStr::from_ptr((*status).name).to_str().unwrap());
+
+            let mut attribs = (*status).attribs;
+            while attribs != 0 as *mut bindings::attrl{
+                let r = (*attribs).resource;
+                let resource = {
+                    if r != 0 as *mut i8 {
+                        ffi::CStr::from_ptr(r).to_str().unwrap()
+                    }else{""}
+                };
+
+                println!("\t{}:{} {}",
+                    ffi::CStr::from_ptr((*attribs).name).to_str().unwrap(), 
+                    resource,
+                    ffi::CStr::from_ptr((*attribs).value).to_str().unwrap());
+                attribs = (*attribs).next;
+            }
+            println!("\n");
+            status = (*status).next;
+        }
     }
 }
-
-// include <pbs_error.h>
-// include <pbs_ifl.h>
-
-/*
-mod ffi {
-    #[repr(C)]
-    struct attrl {
-        name: *mut c_char
-        char *name
-        char *resource
-        char *value
-        struct attrl *next
-    }
-
-    #[repr(C)]
-    struct batch_status {
-        struct batch_status *next
-        char *name
-        struct attrl *attribs
-        char *text
-    }
-
-    extern "C" {
-        include!("<pbs_error.h>");
-        include!("<pbs_ifl.h>");
-
-        fn pbs_connect(char *server) -> int;
-        fn pbs_statfree(struct batch_status *psj)
-        fn pbs_stathost(int connect, char *target, struct attrl *output_attribs, char *extend) -> struct batch_status *
-    }
-}
-*/
