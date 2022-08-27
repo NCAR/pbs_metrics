@@ -5,7 +5,7 @@ use std::env;
 fn main() {
     let measurment;
     let datapoints;
-    match env::args().nth(1).expect("Requires an arg, nodestat or questat").as_str() {
+    match env::args().nth(1).expect("Requires an arg, options are: hosts, ques, jobs, reservations, resources, schedulers, servers, vnodes").as_str() {
     "hosts" => {
         datapoints = pbs::stat_hosts();
         measurment = "pbs_stathost";

@@ -22,7 +22,18 @@ fn parse_status(status: bindings::batch_status, name: &str) -> HashMap<String, S
                 ""
             }
         };
-        let value = unsafe { CStr::from_ptr(attrib.value).to_str() }.unwrap().to_string();
+        let mut value = unsafe { CStr::from_ptr(attrib.value).to_str() }.unwrap().to_string();
+        if resource.contains("mem"){
+            if value.ends_with("gb") {
+                value = (&value[..value.len()-2].parse::<usize>().unwrap()*1000000000).to_string();
+            }else if value.ends_with("mb") {
+                value = (&value[..value.len()-2].parse::<usize>().unwrap()*1000000).to_string();
+            }else if value.ends_with("kb") {
+                value = (&value[..value.len()-2].parse::<usize>().unwrap()*1000).to_string();
+            }else if value.ends_with("b") {
+                value = value[..value.len()-1].to_string();
+            }
+        }
         let mut key = name.to_owned();
 
         if resource != "" {

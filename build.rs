@@ -1,11 +1,12 @@
-extern crate bindgen;
+//only needed to generate bindings
+//extern crate bindgen;
 
-use std::env;
-use std::path::PathBuf;
+//use std::env;
+//use std::path::PathBuf;
 
 fn main() {
-    // add libclang to link path
-    println!("cargo-rustc-link-search=/glade/u/home/shanks/llvm-project/build/lib");
+    // add libclang to link path only needed to generate bindings
+    //println!("cargo-rustc-link-search=/glade/work/shanks/llvm-project/build/lib");
     println!("cargo-rustc-link-search=/opt/pbs/lib");
     // Tell cargo to look for shared libraries in the specified directory
     //println!("cargo:rustc-link-search=/path/to/lib");
@@ -21,12 +22,13 @@ fn main() {
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for
     // the resulting bindings.
+    /* only need to regenerate bindings, commented out so clang not required for every build
     let bindings = bindgen::Builder::default()
         // The input header we would like to generate
         // bindings for.
         .header("wrapper.h")
         .clang_arg("-I/opt/pbs/include")
-        .clang_arg("-I/glade/u/home/shanks/llvm-project/build/lib/clang/16.0.0/include")
+        .clang_arg("-I/glade/work/shanks/llvm-project/build/lib/clang/16.0.0/include")
         // Tell cargo to invalidate the built crate whenever any of the
         // included header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
@@ -40,4 +42,5 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
+    */
 }
