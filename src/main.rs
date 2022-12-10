@@ -1,46 +1,23 @@
-mod pbs;
-
 use std::env;
+use pbs::{self, ResourceType};
 
 fn main() {
-    let measurment;
-    let datapoints;
-    match env::args().nth(1).expect("Requires an arg, options are: hosts, ques, jobs, reservations, resources, schedulers, servers, vnodes").as_str() {
-    "hosts" => {
-        datapoints = pbs::stat_hosts();
-        measurment = "pbs_stathost";
-    },
-    "ques" => {
-        datapoints = pbs::stat_ques();
-        measurment = "pbs_statque";
-    },
-    "jobs" => {
-        datapoints = pbs::stat_jobs();
-        measurment = "pbs_statjob";
-    },
-    "reservations" => {
-        datapoints = pbs::stat_reservations();
-        measurment = "pbs_statresv";
-    },
-    "resources" => {
-        datapoints = pbs::stat_resources();
-        measurment = "pbs_statrsc";
+    if let Some(rtype) = ResourceType::from_str(env::args().nth(1).expect("Requires an arg, options are: hosts, ques, jobs, reservations, resources, schedulers, servers, vnodes").as_str()){
+       let datapoints = pbs::stat(&rtype);
+       let measurment =  match rtype {
+           ResourceType::Hostname => "pbs_stathost",
+           ResourceType::Que => "pbs_statque",
+           ResourceType::Job => "pbs_statjob",
+           ResourceType::Reservation => "pbs_statresv",
+           ResourceType::Resource => "pbs_statrsc",
+           ResourceType::Scheduler => "pbs_statsched",
+           ResourceType::Server => "pbs_statserver",
+           ResourceType::Vnode => "pbs_vnode_stat"
+        };
+        print!("{{ \"measurement\": \"{}\", \"datapoints\": ", measurment);
+        print!("{}", serde_json::to_string(&datapoints).unwrap());
+        println!("}}");
+    }else{
+        panic!("requires an arg for what to stat")
     }
-    "schedulers" => {
-        datapoints = pbs::stat_schedulers();
-        measurment = "pbs_statsched";
-    },
-    "servers" => {
-        datapoints = pbs::stat_servers();
-        measurment = "pbs_statserver";
-    }
-    "vnodes" => {
-        datapoints = pbs::stat_vnodes();
-        measurment = "pbs_vnode_stat";
-    },
-    _ => panic!("requires an arg for what to stat")
-    }
-    print!("{{ \"measurement\": \"{}\", \"datapoints\": ", measurment);
-    print!("{}", serde_json::to_string(&datapoints).unwrap());
-    println!("}}");
 }
