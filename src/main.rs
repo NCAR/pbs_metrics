@@ -1,63 +1,78 @@
 use std::collections::HashMap;
-use std::env;
-use pbs::{self, ResourceType, Status};
+use pbs::{Server, Resource, Status};
+use clap::{Parser};
+use serde_json;
+use std::str::FromStr;
+
+#[derive(Debug, Parser)]
+struct Cli {
+    resource: Resource,
+    server: Option<String>,
+}
 
 fn main() {
-    if let Some(rtype) = ResourceType::from_str(env::args().nth(1).expect("Requires an arg, options are: hosts, ques, jobs, reservations, resources, schedulers, servers, vnodes").as_str()){
-       let srv = pbs::Server::new();
-       let datapoints: Vec<HashMap<String,String>> = srv.stat(&rtype)
-           .map(|x| parse_status(x, rtype.to_string())).collect();
-       let measurment =  match rtype {
-           ResourceType::Hostname => "pbs_stathost",
-           ResourceType::Que => "pbs_statque",
-           ResourceType::Job => "pbs_statjob",
-           ResourceType::Reservation => "pbs_statresv",
-           ResourceType::Resource => "pbs_statrsc",
-           ResourceType::Scheduler => "pbs_statsched",
-           ResourceType::Server => "pbs_statserver",
-           ResourceType::Vnode => "pbs_vnode_stat"
-        };
-        print!("{{ \"measurement\": \"{}\", \"datapoints\": ", measurment);
-        print!("{}", serde_json::to_string(&datapoints).unwrap());
-        println!("}}");
-    }else{
-        panic!("requires an arg for what to stat")
+    let args = Cli::parse();
+    let srv = if let Some(s) = args.server {
+        Server::connect_to(&s)
+    } else {
+        Server::new()
+    };
+    let data: Vec<HashMap<String,serde_json::Value>> = srv.stat(args.resource.clone(), None, vec!())
+        .map(|x| parse_status(x)).collect();
+
+
+    println!("{}", serde_json::json!({"measurement": r_to_string(&args.resource), "datapoints": data}));
+}
+
+pub fn r_to_string(r: &Resource) -> String {
+    match r {
+        &Resource::Hostname => "hostname".to_string(),
+        &Resource::Que => "que".to_string(),
+        &Resource::Job => "job".to_string(),
+        &Resource::Reservation => "reservation".to_string(),
+        &Resource::Resource => "resource".to_string(),
+        &Resource::Scheduler => "scheduler".to_string(),
+        &Resource::Server => "server".to_string(),
+        &Resource::Vnode => "vnode".to_string(),
     }
 }
 
-fn parse_status(status: Status, name: String) -> HashMap<String, String> {
-    let mut parsed = status.attribs()
+fn parse_status(status: Status) -> HashMap<String, serde_json::Value> {
+    let mut parsed = status.attribs_iter()
     .map(|attrib| {
         let value = {
-            if let Some(res) = attrib.resource {
+            //memory string to bytes conversion parsing
+            if let Some(res) = attrib.resource() {
                 if res.contains("mem"){
-                    if attrib.value.ends_with("gb") {
-                        (&attrib.value[..attrib.value.len()-2].parse::<usize>().unwrap()*1000000000).to_string()
-                    }else if attrib.value.ends_with("mb") {
-                        (&attrib.value[..attrib.value.len()-2].parse::<usize>().unwrap()*1000000).to_string()
-                    }else if attrib.value.ends_with("kb") {
-                        (&attrib.value[..attrib.value.len()-2].parse::<usize>().unwrap()*1000).to_string()
-                    }else if attrib.value.ends_with("b") {
-                        attrib.value[..attrib.value.len()-1].to_string()
+                    if attrib.value().ends_with("gb") {
+                        (&attrib.value()[..attrib.value().len()-2].parse::<usize>().unwrap()*1000000000).to_string()
+                    }else if attrib.value().ends_with("mb") {
+                        (&attrib.value()[..attrib.value().len()-2].parse::<usize>().unwrap()*1000000).to_string()
+                    }else if attrib.value().ends_with("kb") {
+                        (&attrib.value()[..attrib.value().len()-2].parse::<usize>().unwrap()*1000).to_string()
+                    }else if attrib.value().ends_with("b") {
+                        attrib.value()[..attrib.value().len()-1].to_string()
                     }else{
-                    attrib.value.to_string()
+                    attrib.value().to_string()
                     }
                 }else{
-                    attrib.value.to_string()
+                    attrib.value().to_string()
                 }
             }else{
-                attrib.value.to_string()
+                attrib.value().to_string()
             }
         };
-        let mut key = attrib.name.to_owned();
+        let mut key = attrib.name().to_owned();
 
-        if let Some(res) = attrib.resource {
+        if let Some(res) = attrib.resource() {
             key.push_str("_");
             key.push_str(res);
         }
-        (key, value)
+        let val = if let Ok(v) = isize::from_str(&value) {serde_json::Value::Number(v.into()) }
+            else {serde_json::Value::String(value)};
+        (key, val)
     })
-    .collect::<HashMap<String,String>>();
-    parsed.insert(name.to_string(), status.name().to_string());
+    .collect::<HashMap<String,serde_json::Value>>();
+    parsed.insert("name".to_string(), serde_json::Value::String(status.name().to_string()));
     parsed
 }
