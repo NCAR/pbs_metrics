@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use pbs::{Server, Resource, Status};
 use clap::{Parser};
-use serde_json;
+
 use std::str::FromStr;
 
 #[derive(Debug, Parser)]
@@ -18,22 +18,22 @@ fn main() {
         Server::new()
     };
     let data: Vec<HashMap<String,serde_json::Value>> = srv.stat(args.resource.clone(), None, vec!())
-        .map(|x| parse_status(x)).collect();
+        .map(parse_status).collect();
 
 
     println!("{}", serde_json::json!({"measurement": r_to_string(&args.resource), "datapoints": data}));
 }
 
 pub fn r_to_string(r: &Resource) -> String {
-    match r {
-        &Resource::Hostname => "hostname".to_string(),
-        &Resource::Que => "que".to_string(),
-        &Resource::Job => "job".to_string(),
-        &Resource::Reservation => "reservation".to_string(),
-        &Resource::Resource => "resource".to_string(),
-        &Resource::Scheduler => "scheduler".to_string(),
-        &Resource::Server => "server".to_string(),
-        &Resource::Vnode => "vnode".to_string(),
+    match *r {
+        Resource::Hostname => "hostname".to_string(),
+        Resource::Que => "que".to_string(),
+        Resource::Job => "job".to_string(),
+        Resource::Reservation => "reservation".to_string(),
+        Resource::Resource => "resource".to_string(),
+        Resource::Scheduler => "scheduler".to_string(),
+        Resource::Server => "server".to_string(),
+        Resource::Vnode => "vnode".to_string(),
     }
 }
 
@@ -50,7 +50,7 @@ fn parse_status(status: Status) -> HashMap<String, serde_json::Value> {
                         (&attrib.value()[..attrib.value().len()-2].parse::<usize>().unwrap()*1000000).to_string()
                     }else if attrib.value().ends_with("kb") {
                         (&attrib.value()[..attrib.value().len()-2].parse::<usize>().unwrap()*1000).to_string()
-                    }else if attrib.value().ends_with("b") {
+                    }else if attrib.value().ends_with('b') {
                         attrib.value()[..attrib.value().len()-1].to_string()
                     }else{
                     attrib.value().to_string()
@@ -65,7 +65,7 @@ fn parse_status(status: Status) -> HashMap<String, serde_json::Value> {
         let mut key = attrib.name().to_owned();
 
         if let Some(res) = attrib.resource() {
-            key.push_str("_");
+            key.push('_');
             key.push_str(res);
         }
         let val = if let Ok(v) = isize::from_str(&value) {serde_json::Value::Number(v.into()) }

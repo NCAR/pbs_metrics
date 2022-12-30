@@ -7,5 +7,5 @@ edition = "2021"
 
 [dependencies]
 serde_json = "1.0"
-pbs = { path = "../pbs" }
+pbs = { path = "../pbs", features=["clap"] }
 clap = "4.0"
