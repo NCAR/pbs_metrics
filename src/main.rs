@@ -17,8 +17,16 @@ fn main() {
     } else {
         Server::new()
     };
-    let data: Vec<HashMap<String,serde_json::Value>> = srv.stat(args.resource.clone(), None, vec!())
-        .map(parse_status).collect();
+    let data: Vec<HashMap<String,serde_json::Value>> = match args.resource{
+        Resource::Hostname => srv.stat_host(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Reservation => srv.stat_reservation(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Resource => srv.stat_resource(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Vnode => srv.stat_vnode(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Que => srv.stat_que(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Scheduler => srv.stat_scheduler(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Server => srv.stat_server(None, vec!()).unwrap().map(parse_status).collect(),
+        Resource::Job => srv.stat_job(vec!(), vec!()).unwrap().map(parse_status).collect(),
+    };
 
 
     println!("{}", serde_json::json!({"measurement": r_to_string(&args.resource), "datapoints": data}));
